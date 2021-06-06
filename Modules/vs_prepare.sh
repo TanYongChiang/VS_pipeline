@@ -3,6 +3,7 @@
 set +a
 set -e
 
+# region functions 
 function check_cmd ()
 {
     if ! command -v $1 &> /dev/null
@@ -37,6 +38,9 @@ function check_spaces ()
 
 function extension_present ()
 {
+# 1- suffix name
+# 2- directory
+# return true or false
     cd $2
     local filecount=$(find . -maxdepth 1 -type f -name "*.$1" | wc -l)
     if [[ $filecount -ge 1 ]]
@@ -49,6 +53,10 @@ function extension_present ()
 
 function prepare_receptor4_py ()
 {
+# 1- receptor name without .pdb
+# 2- MGL_dir
+# 3- protein_dir
+# convert to pdbqs then pdbqt because kollman inaccessible for pdbqt but pdbqs can
     $2/bin/pythonsh $2/MGLToolsPckgs/AutoDockTools/Utilities24/prepare_receptor.py -r $3/$1.pdb -o $3/$1.pdbqs > /dev/null 2>&1
     $2/bin/pythonsh $2/MGLToolsPckgs/AutoDockTools/Utilities24/pdbqs_to_pdbqt.py -s $3/$1 -C -o $3/$1.pdbqt > /dev/null 2>&1
     rm -f $3/$1.pdbqs
@@ -56,6 +64,10 @@ function prepare_receptor4_py ()
 
 function generate_dpf ()
 {
+# 1- AD_ALGO
+# 2- num_runs
+# 3- protein_dir
+# 4- protein name
     if [[ $1 -eq 1 ]]
     then
         printf "set_ga\n" > $3/$4.dpf
@@ -72,6 +84,13 @@ function generate_dpf ()
 
 function autosite_pred ()
 {
+# 1- MGL2_dir
+# 2- protein_dir
+# 3- protein name
+# 4- size of box (A)
+# 5- ALGO
+# 6- num_runs
+# 7- AUTO_SITE_SHAPE
     $1/bin/pythonsh $1/MGLToolsPckgs/AutoSite/bin/AS.py -r $2/$3.pdbqt > /dev/null 2>&1
     unset start_col
     unset end_col
@@ -98,6 +117,7 @@ function autosite_pred ()
                 end_col["$dim"]="54";;
         esac
         coords=$(cat $2/$3_cl_1.txt | awk 'BEGIN {FS=""};{for(i='"${start_col["$dim"]}"';i<='"${end_col["$dim"]}"';i++) printf $i; print ""}')
+        # dim_avrg["$dim"]=$(printf "$coords" | awk 'BEGIN {sum=0};{sum+=$1};END {printf "%f\n", sum/NR}')
         dim_min["$dim"]=$(printf "$coords" | awk 'NR==1 {min=$1};{if ($1<min) min=$1};END {printf "%f\n", min}')
         dim_max["$dim"]=$(printf "$coords" | awk 'NR==1 {max=$1};{if ($1>max) max=$1};END {printf "%f\n", max}')
         dim_midpt["$dim"]=$(printf "${dim_min["$dim"]} ${dim_max["$dim"]}" | awk '{print ($1+$2)/2}')
@@ -137,6 +157,11 @@ function autosite_pred ()
 
 function pdbqt_xyz ()
 {
+# 1- protein_dir
+# 2- resiconf_file
+# 3- ALGO
+# 4- expand xyz in Angstrom (gpf_length)
+# 5- num_runs
     while read line
     do
         prot_name="$(printf -- "$line" | awk -F "," '{print $1}')"
@@ -144,6 +169,7 @@ function pdbqt_xyz ()
         get_ATOM="$(cat $1/$prot_name.pdbqt | grep ^ATOM)"
         printf -- "" > $1/$prot_name.pdbqtxyz
 
+        # detect type of res input, chn_res or just res
         chn_res_val=$(echo "$chn_res_s" | awk -F " " '{print $1}')
         col2_val=$(printf -- "$chn_res_val" | awk -F "_" '{print $2}')
 
@@ -175,6 +201,7 @@ function pdbqt_xyz ()
             done
         fi
 
+        # generate start end midpt
         unset start_col
         unset end_col
         unset dim_min
@@ -242,6 +269,9 @@ function pdbqt_xyz ()
 
 function obabel_addh ()
 {
+# 1- bab_addh
+# 2- ligand full location + suffix
+
     if [[ "$1" == 1 ]]
     then
         local bab_addh='-p 7.4'
@@ -254,6 +284,9 @@ function obabel_addh ()
 
 function obabel_gen3d ()
 {
+# 1- bab_gen3d_speed
+# 2- ligand full location with suffix
+
     case "$1" in
         "1") local bab_gen3d_speed='--fastest';;
         "2") local bab_gen3d_speed='--fast';;
@@ -268,6 +301,11 @@ function obabel_gen3d ()
 
 function obabel_conformer ()
 {
+# 1- bab_conformer_ff
+# 2- bab_conformer_score
+# 3- bab_conformer_no
+# 4- ligand full location + suffix
+
     case "$1" in
         "1") local bab_conformer_ff='--systematic';;
         "2") local bab_conformer_ff='--random';;
@@ -288,6 +326,13 @@ function obabel_conformer ()
 
 function obabel_minimization ()
 {
+# 1- bab_minim_sd_nsteps
+# 2- bab_minim_sd_conv
+# 3- bab_minim_cg_nsteps
+# 4- bab_minim_cg_conv
+# 5- bab_minim_ff
+# 6- ligand full location + suffix
+
     case "$5" in
         "1") local bab_minim_ff='-ff MMFF94';;
         "2") local bab_minim_ff='-ff MMFF94s';;
@@ -313,12 +358,15 @@ function obabel_minimization ()
 
 function obabel_mol2_pdb ()
 {
+# 1- ligand full location + .mol2
     local lig_loc_nosuffix=$(echo "$1" | cut -f 1 -d '.')
     obabel "$1" -O "$lig_loc_nosuffix.pdb" &> /dev/null
 }
 
 function prepare_ligand4_py ()
 {
+# 1- MGL_dir
+# 2- ligand full location + suffix
     local lig_loc_nosuffix=$(echo "$2" | cut -f 1 -d '.')
     $1/bin/pythonsh $1/MGLToolsPckgs/AutoDockTools/Utilities24/prepare_ligand4.py -l $2 -o $lig_loc_nosuffix.pdbqt > /dev/null 2>&1
 }
@@ -337,8 +385,29 @@ function print_ask_body ()
 {
     printf "\e[22m\e[32m$1\n\e[0m"
 }
+
+function ligand_check_atm ()
+{
+# 1- ligand_dir
+# 2- ligand.pdbqt full path + suffix
+    local ligand_atmtype=$(cat $2 | awk -F "" '/^(HETATM|ATOM)/ {for(i=78;i<=79;i++) printf $i; print ""}')
+    for atm_line in $ligand_atmtype
+    do
+        if ! [[ "$atm_line" =~ ^(H|HD|HS|C|A|N|NA|NS|O|OA|OS|F|Mg|MG|P|SA|S|Cl|CL|Ca|CA|Mn|MN|Fe|FE|Zn|ZN|Br|BR|I)$ ]]
+        then
+            mkdir -p $1/Incompatible
+            mv $2 $1/Incompatible/
+        fi
+    done
+}
+# endregion functions
+
+# region IMPORTANT CHECKING 
+
+    # region checking essential environment 
 printf "\nChecking: essential environments\n"
 
+# check autodock and autogrid command
 check_cmd "parallel"
 if [[ $ALGO == "AD" ]]
 then
@@ -351,6 +420,11 @@ then
     check_cmd "vina"
 fi
 check_cmd "obabel"
+    # endregion checking essential environment
+
+# endregion CHECKING
+
+# region GET important directories 
 print_ask_head "Enter directory containing receptor files: "
 while true
 do
@@ -392,7 +466,7 @@ do
     fi
     print_err_color "Directory $MGL_dir not found:"
 done
-
+# check MGL directories
 export -f check_exist
 parallel -j 0 check_exist "{1}" ::: $MGL_dir $MGL_dir/bin/pythonsh $MGL_dir/MGLToolsPckgs/AutoDockTools/Utilities24/prepare_gpf4.py $MGL_dir/MGLToolsPckgs/AutoDockTools/Utilities24/prepare_dpf4.py
 
@@ -454,6 +528,8 @@ if [ -n "$(ls -A $result_dir)" ]; then
     exit 1
 fi
 
+# endregion GET important directories
+
 print_ask_head "Enter number of jobs to be run in parallel: "
 while true
 do
@@ -468,10 +544,12 @@ do
     print_err_color "Please enter an integer: "
 done
 
+# region RECEPTOR 
 
 cd $protein_dir
 printf "Receptor: checking receptor directory\n"
 
+    # region protein pdbqt absent
 if [ $(extension_present "pdbqt" "$protein_dir") == false ]
 then
     printf "Receptor: pdbqt files undetected\n"
@@ -499,9 +577,12 @@ then
         exit 1
     fi
 fi
+    # endregion protein pdbqt present 
 
+    # region check parameters 
 if [[ $ALGO == "AD" ]]
 then
+        # region check dpf (AD only) 
     printf "\nParameters: checking dpf files\n"
     if [ $(extension_present "dpf" "$protein_dir") == true ]
     then
@@ -546,7 +627,10 @@ then
             print_err_color "Please enter an integer: "
         done
     fi
-
+        # endregion check dpf
+            # return AD_ALGO, 1- LGA, 2- GA, 3- SA, 4- LS, 5- EXIT
+            # return num_runs
+        # region check gpf (AD only) 
     printf "\nParameters: checking gpf files\n"
     if [ $(extension_present "gpf" "$protein_dir") == true ]
     then
@@ -576,8 +660,12 @@ then
             print_err_color "Please enter a number between 1 to 3:"
         done
     fi
+        # endregion check gpf
+            # return AUTO_SITE, 2- yes, 3- specify residue
+            # return gpf_length if AUTO_SITE=2
 elif [[ $ALGO == "VINA" ]]
 then
+        # region check config 
     printf "\nParameters: checking config files\n"
     if [ $(extension_present "txt" "$protein_dir") == true ]
     then
@@ -620,9 +708,15 @@ then
             print_err_color "Please enter an integer: "
         done
     fi
+        # endregion check config
+            # return num_runs
+            # return AUTO_SITE, 2- yes
+            # return gpf_length if AUTO_SITE=2
 fi
+        # region param autosite
 if [[ $AUTO_SITE -eq 2 ]]
 then
+            # region get MGL2_dir
     print_ask_head "Enter directory of MGLTools2:"
     while true
     do
@@ -636,6 +730,7 @@ then
         fi
         print_err_color "Directory $MGL2_dir not found:"
     done
+            # endregion get MGL2_dir
     print_ask_head "AutoSite: search grid geometry:"
     print_ask_body " 1: Cube "
     print_ask_body " 2: Auto positioning and sizing \n"
@@ -704,28 +799,39 @@ then
         print_err_color "Please enter an positive numerical value:"
     done
 fi
+        # endregion param autosite
+    # endregion check parameters 
+# endregion RECEPTOR 
+
+# region LIGAND 
 cd $ligand_dir
+    # region ligand pdbqt absent
 printf "\nLigand: checking ligand directory\n"
 if [ $(extension_present "pdbqt" "$ligand_dir") == false ]
 then
     printf "Ligand: .pdbqt files undetected\n"
 
+    # if input is smiles
     if [ $(extension_present "smi" "$ligand_dir") == true ]
     then
         printf "Ligand preparation: .smi files detected\n"
     fi
+    # if input is sdf
     if [ $(extension_present "sdf" "$ligand_dir") == true ]
     then
         printf "Ligand preparation: .sdf files detected\n"
     fi
+    # if input is mol2
     if [ $(extension_present "mol2" "$ligand_dir") == true ]
     then
         printf "Ligand preparation: .mol2 files detected\n"
     fi
+    # if input is pdb
     if [ $(extension_present "pdb" "$ligand_dir") == true ]
     then
         printf "Ligand preparation: .pdb files detected\n"
     fi
+    # ask 3D gen
     if [ $(extension_present "smi" "$ligand_dir") == true ] || [ $(extension_present "sdf" "$ligand_dir") == true ]
     then
         print_ask_head "Ligand preparation: Enter 3D structure conversion speed: "
@@ -895,12 +1001,21 @@ then
         done
     fi
 fi
+    # endregion ligand pdbqt present
+# endregion LIGAND
+
+# region run
+
+    # region export for CLI
 export prepare_receptor
 export AD_ALGO
 export AUTO_SITE
 export -f extension_present
 export ligand_dir
 export ALGO
+    # endregion export for CLI
+    # region prepare pdbqt 
+
 if [[ $prepare_receptor == "y" || $prepare_receptor == "Y" ]]
 then
     bash $SCRIPTPATH/Modules/vs_printCLI.sh -c 1
@@ -908,6 +1023,9 @@ then
     export -f prepare_receptor4_py
     parallel -j 0 --eta prepare_receptor4_py "{1/.}" "{2}" "$protein_dir" ::: $(ls $protein_dir/*.pdb) ::: $MGL_dir
 fi
+    # endregion prepare pdbqt
+
+    # region generate dpf 
 
 if [[ $AD_ALGO =~ ^[1-3]$ ]]
 then
@@ -916,6 +1034,9 @@ then
     export -f generate_dpf
     parallel -j 0 --eta generate_dpf "$AD_ALGO" "{2}" "$protein_dir" "{1/.}" ::: $(ls $protein_dir/*.pdbqt) ::: "$num_runs"
 fi
+    # endregion generate dpf
+
+    # region generate gpf 
 if [[ $AUTO_SITE -eq 2 ]]
 then
     bash $SCRIPTPATH/Modules/vs_printCLI.sh -c 3
@@ -928,6 +1049,9 @@ then
     printf "Parameters: generating gpf files"
     pdbqt_xyz "$protein_dir" "$resiconf_file" "$ALGO" "$gpf_length" "$num_runs"
 fi
+    # endregion generate gpf
+
+    # region prepareligand
 bash $SCRIPTPATH/Modules/vs_printCLI.sh -c 5
 if [ $(extension_present "pdbqt" "$ligand_dir") == false ]
 then
@@ -938,10 +1062,12 @@ then
     export -f obabel_mol2_pdb
     export -f prepare_ligand4_py
 
+    # if input is smiles
     if [[ $(ls $ligand_dir/*.smi | wc -l) -ge 1 ]]
     then
         if [[ $(ls $ligand_dir/*.smi | wc -l) == 1 ]]
         then
+            # split smi
             smi_file="$(printf "$ligand_dir/*.smi")"
             mkdir -p $ligand_dir/LIGAND_SMI
             tot_smi=$(cat $smi_file | wc -l)
@@ -959,16 +1085,19 @@ then
             mv $ligand_dir/*.smi $ligand_dir/LIGAND_SMI
         fi
     fi
+    # if input is sdf
     if [ $(extension_present "sdf" "$ligand_dir") == true ]
     then
         mkdir -p $ligand_dir/LIGAND_SDF
         mv $ligand_dir/*.sdf $ligand_dir/LIGAND_SDF
     fi
+    # if input is mol2
     if [ $(extension_present "mol2" "$ligand_dir") == true ]
     then
         mkdir -p $ligand_dir/LIGAND_MOL2
         mv $ligand_dir/*.mol2 $ligand_dir/LIGAND_MOL2
     fi
+    # if input is pdb
     if [ $(extension_present "pdb" "$ligand_dir") == true ]
     then
         mkdir -p $ligand_dir/LIGAND_PDB
@@ -1038,6 +1167,14 @@ then
     fi
 fi
 
+printf "\n\nLigand preparation: pdbqt checking \n"
+export -f ligand_check_atm
+parallel -j 0 ligand_check_atm "$ligand_dir" "{1}" ::: $(ls $ligand_dir/*.pdbqt)
+
+    # endregion prepare ligand
+# endregion run
+
+# region unset functions
 unset -f check_exist
 unset -f check_spaces
 unset -f prepare_receptor4_py
@@ -1049,7 +1186,10 @@ unset -f obabel_conformer
 unset -f obabel_minimization
 unset -f obabel_mol2_pdb
 unset -f prepare_ligand4_py
+unset -f ligand_check_atm
+# endregion unset functions
 
+# your turn vs_pipeline
 export ligand_dir
 export result_dir
 export protein_dir
