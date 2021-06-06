@@ -1068,16 +1068,16 @@ then
         if [[ $(ls $ligand_dir/*.smi | wc -l) == 1 ]]
         then
             # split smi
-            smi_file="$(printf "$ligand_dir/*.smi")"
+            smi_file="$(ls $ligand_dir/*.smi)"
             mkdir -p $ligand_dir/LIGAND_SMI
             tot_smi=$(cat $smi_file | wc -l)
             n=1
-            while read line
+            while read line || [ -n "$line" ]
             do
                 smi_suffix=$(printf "%0*d" "${#tot_smi}" "$n")
                 printf "$line" | awk '{print $1}' > $ligand_dir/LIGAND_SMI/LG_$smi_suffix.smi
                 n=$((n+1))
-            done < $smi_file
+            done < ${smi_file}
 
         elif [[ $(ls $ligand_dir/*.smi | wc -l) -gt 1 ]]
         then
