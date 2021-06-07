@@ -240,6 +240,10 @@ function gen_best_structure ()
             then
                 echo "$line" >> $4/best_structures/$1/$2/DOCKED_LIGAND.pdb
                 echo "$line" >> $4/best_structures/$1/$2/DOCKED_COMPLEX.pdb
+                if [[ "$line" =~ ^TER ]]
+                then
+                    trigger=$(( trigger+1 ))
+                fi
             fi
         fi
     done < ${dlg_file}

@@ -50,7 +50,7 @@ printf "\t|                                                              |\n"
 printf "\t|     +------------------------------------+-------------|     |\n"
 printf "\t|     | \e[1m\e[96mJOBS\e[0m                               | \e[1m\e[96mSTATUS\e[0m      |     |\n"
 printf "\t|     +------------------------------------+-------------|     |\n"
-printf "\t|     | \e[1mPREPARATION\e[0m                                      |     |\n"
+printf "\t|     | \e[1mPREPARATION\e[0m                        |             |     |\n"
 
 if [[ $prepare_receptor == "y" || $prepare_receptor == "Y" ]]
 then
@@ -77,8 +77,8 @@ then
     CLI_print_line "5" "$current_CLI"
 fi
 
-printf "\t|     |                                                  |     |\n"
-printf "\t|     | \e[1mVIRTUAL SCREENING\e[0m                                |     |\n"
+printf "\t|     |                                    |             |     |\n"
+printf "\t|     | \e[1mVIRTUAL SCREENING\e[0m                  |             |     |\n"
 CLI_print_line "6" "$current_CLI"
 
 if [[ $ALGO == "AD" ]]
