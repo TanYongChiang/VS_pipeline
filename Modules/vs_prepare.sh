@@ -531,6 +531,7 @@ fi
 # endregion GET important directories
 
 print_ask_head "Enter number of jobs to be run in parallel: "
+print_ask_body "(number of cores: $(nproc))"
 while true
 do
     read number_jobs
@@ -587,7 +588,7 @@ then
     if [ $(extension_present "dpf" "$protein_dir") == true ]
     then
         export check_exist
-        parallel -j 0 check_exist "{1.}.dpf" ::: $(ls $protein_dir/*.pdbqt)
+        parallel -j $number_jobs check_exist "{1.}.dpf" ::: $(ls $protein_dir/*.pdbqt)
     elif [ $(extension_present "dpf" "$protein_dir") == false ]
     then
         printf "Parameters: dpf files undetected, preparing dpf files\n"
@@ -635,7 +636,7 @@ then
     if [ $(extension_present "gpf" "$protein_dir") == true ]
     then
         export check_exist
-        parallel -j 0 check_exist "{1.}.gpf" ::: $(ls $protein_dir/*.pdb)
+        parallel -j $number_jobs check_exist "{1.}.gpf" ::: $(ls $protein_dir/*.pdb)
     elif [ $(extension_present "gpf" "$protein_dir") == false ]
     then
         printf "Parameters: gpf files undetected, preparing gpf files\n"
@@ -670,7 +671,7 @@ then
     if [ $(extension_present "txt" "$protein_dir") == true ]
     then
         export check_exist
-        parallel -j 0 check_exist "{1.}.txt" ::: $(ls $protein_dir/*.pdbqt)
+        parallel -j $number_jobs check_exist "{1.}.txt" ::: $(ls $protein_dir/*.pdbqt)
     elif [ $(extension_present "txt" "$protein_dir") == false ]
     then
         printf "Parameters: config files undetected, preparing config files\n"
@@ -1021,7 +1022,7 @@ then
     bash $SCRIPTPATH/Modules/vs_printCLI.sh -c 1
     printf "Receptor: Preparing receptor pdbqt files from pdb\n"
     export -f prepare_receptor4_py
-    parallel -j 0 --eta prepare_receptor4_py "{1/.}" "{2}" "$protein_dir" ::: $(ls $protein_dir/*.pdb) ::: $MGL_dir
+    parallel -j $number_jobs --eta prepare_receptor4_py "{1/.}" "{2}" "$protein_dir" ::: $(ls $protein_dir/*.pdb) ::: $MGL_dir
 fi
     # endregion prepare pdbqt
 
@@ -1032,7 +1033,7 @@ then
     bash $SCRIPTPATH/Modules/vs_printCLI.sh -c 2
     printf "Parameters: generating dpf files\n"
     export -f generate_dpf
-    parallel -j 0 --eta generate_dpf "$AD_ALGO" "{2}" "$protein_dir" "{1/.}" ::: $(ls $protein_dir/*.pdbqt) ::: "$num_runs"
+    parallel -j $number_jobs --eta generate_dpf "$AD_ALGO" "{2}" "$protein_dir" "{1/.}" ::: $(ls $protein_dir/*.pdbqt) ::: "$num_runs"
 fi
     # endregion generate dpf
 
@@ -1042,7 +1043,7 @@ then
     bash $SCRIPTPATH/Modules/vs_printCLI.sh -c 3
     printf "Pocket Prediction: autosite running\n"
     export -f autosite_pred
-    parallel -j 0 --eta autosite_pred "$MGL2_dir" "$protein_dir" "{1/.}" "{2}" "$ALGO" "{3}" "{4}" ::: $(ls $protein_dir/*.pdbqt) ::: "$gpf_length" ::: "$num_runs" ::: "$AUTO_SITE_SHAPE"
+    parallel -j $number_jobs --eta autosite_pred "$MGL2_dir" "$protein_dir" "{1/.}" "{2}" "$ALGO" "{3}" "{4}" ::: $(ls $protein_dir/*.pdbqt) ::: "$gpf_length" ::: "$num_runs" ::: "$AUTO_SITE_SHAPE"
 elif [[ $AUTO_SITE -eq 3 ]]
 then
     bash $SCRIPTPATH/Modules/vs_printCLI.sh -c 4
@@ -1110,7 +1111,7 @@ then
         printf "\nLigand preparation: 3D structures generation\n"
         if [[ $(ls $ligand_dir/LIGAND_SMI/*.smi | wc -l) -ge 1 ]]
         then
-            parallel -j 0 --eta obabel_gen3d "$bab_gen3d_speed" "{1}" ::: $(ls $ligand_dir/LIGAND_SMI/*.smi)
+            parallel -j $number_jobs --eta obabel_gen3d "$bab_gen3d_speed" "{1}" ::: $(ls $ligand_dir/LIGAND_SMI/*.smi)
         fi
         mkdir -p $ligand_dir/LIGAND_PDB
         mv $ligand_dir/LIGAND_SMI/*.pdb $ligand_dir/LIGAND_PDB
@@ -1118,14 +1119,14 @@ then
     then
         bash $SCRIPTPATH/Modules/vs_printCLI.sh -c 5
         printf "\nLigand preparation: 3D structures generation\n"
-        parallel -j 0 --eta obabel_gen3d "$bab_gen3d_speed" "{1}" ::: $(ls $ligand_dir/LIGAND_SDF/*.sdf)
+        parallel -j $number_jobs --eta obabel_gen3d "$bab_gen3d_speed" "{1}" ::: $(ls $ligand_dir/LIGAND_SDF/*.sdf)
         mkdir -p $ligand_dir/LIGAND_PDB
         mv $ligand_dir/LIGAND_SDF/*.pdb $ligand_dir/LIGAND_PDB
     elif [ -e "$ligand_dir/LIGAND_MOL2" ]
     then
         bash $SCRIPTPATH/Modules/vs_printCLI.sh -c 5
         printf "\nLigand preparation: conversion from mol2 into pdb\n"
-        parallel -j 0 --eta obabel_mol2_pdb "{1}" ::: $(ls $ligand_dir/LIGAND_MOL2/*.mol2)
+        parallel -j $number_jobs --eta obabel_mol2_pdb "{1}" ::: $(ls $ligand_dir/LIGAND_MOL2/*.mol2)
         mkdir -p $ligand_dir/LIGAND_PDB
         mv $ligand_dir/LIGAND_MOL2/*.pdb $ligand_dir/LIGAND_PDB
     fi
@@ -1141,35 +1142,35 @@ then
         then
             printf "explicitly \n"
         fi
-        parallel -j 0 --eta obabel_addh "$bab_addh" "{1}" ::: $(ls $ligand_dir/LIGAND_PDB/*.pdb)
+        parallel -j $number_jobs --eta obabel_addh "$bab_addh" "{1}" ::: $(ls $ligand_dir/LIGAND_PDB/*.pdb)
     fi
 
     if [[ $bab_conformer_ff =~ ^[1-5]$ ]]
     then
         bash $SCRIPTPATH/Modules/vs_printCLI.sh -c 5
         printf "\nLigand preparation: conformer generation \n"
-        parallel -j 0 --eta obabel_conformer "$bab_conformer_ff" ::: "$bab_conformer_score" ::: "$bab_conformer_no" ::: $(ls $ligand_dir/LIGAND_PDB/*.pdb)
+        parallel -j $number_jobs --eta obabel_conformer "$bab_conformer_ff" ::: "$bab_conformer_score" ::: "$bab_conformer_no" ::: $(ls $ligand_dir/LIGAND_PDB/*.pdb)
     fi
 
     if [[ $bab_minim_sd_nsteps -gt 0 ]] || [[ $bab_minim_cg_nsteps -gt 0 ]]
     then
         bash $SCRIPTPATH/Modules/vs_printCLI.sh -c 5
         printf "\nLigand preparation: energy minimization \n"
-        parallel -j 0 --eta obabel_minimization "$bab_minim_sd_nsteps" ::: "$bab_minim_sd_conv" ::: "$bab_minim_cg_nsteps" ::: "$bab_minim_cg_conv" ::: "$bab_minim_ff" ::: $(ls $ligand_dir/LIGAND_PDB/*.pdb)
+        parallel -j $number_jobs --eta obabel_minimization "$bab_minim_sd_nsteps" ::: "$bab_minim_sd_conv" ::: "$bab_minim_cg_nsteps" ::: "$bab_minim_cg_conv" ::: "$bab_minim_ff" ::: $(ls $ligand_dir/LIGAND_PDB/*.pdb)
     fi
 
     if [ -e "$ligand_dir/LIGAND_PDB" ]
     then
         bash $SCRIPTPATH/Modules/vs_printCLI.sh -c 5
         printf "\nLigand preparation: pdbqt generation \n"
-        parallel -j 0 --eta prepare_ligand4_py "$MGL_dir" "{1}" ::: $(ls $ligand_dir/LIGAND_PDB/*.pdb)
+        parallel -j $number_jobs --eta prepare_ligand4_py "$MGL_dir" "{1}" ::: $(ls $ligand_dir/LIGAND_PDB/*.pdb)
         mv $ligand_dir/LIGAND_PDB/*.pdbqt $ligand_dir
     fi
 fi
 
 printf "\n\nLigand preparation: pdbqt checking \n"
 export -f ligand_check_atm
-parallel -j 0 ligand_check_atm "$ligand_dir" "{1}" ::: $(ls $ligand_dir/*.pdbqt)
+parallel -j $number_jobs ligand_check_atm "$ligand_dir" "{1}" ::: $(ls $ligand_dir/*.pdbqt)
 
     # endregion prepare ligand
 # endregion run

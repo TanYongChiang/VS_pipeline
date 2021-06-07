@@ -265,26 +265,26 @@ export ALGO
 
 bash $SCRIPTPATH/Modules/vs_printCLI.sh -c 6
 
-parallel -j 0 echo {/.} ::: $(ls $protein_dir/*.pdbqt) > $working_dir/proteins.csv
-parallel -j 0 echo {/.} ::: $(ls $ligand_dir/*.pdbqt) > $working_dir/ligands.csv
+parallel -j $number_jobs echo {/.} ::: $(ls $protein_dir/*.pdbqt) > $working_dir/proteins.csv
+parallel -j $number_jobs echo {/.} ::: $(ls $ligand_dir/*.pdbqt) > $working_dir/ligands.csv
 trap_add "rm -f $working_dir/proteins.csv" EXIT
 trap_add "rm -f $working_dir/ligands.csv" EXIT
 
 echo "Checking: proper preparation of protein files"
 export -f check_exist
 export -f vina_check_cpu
-parallel -j 0 check_exist "$protein_dir/{1}{2}" :::: $working_dir/proteins.csv ::: $prot_ext
+parallel -j $number_jobs check_exist "$protein_dir/{1}{2}" :::: $working_dir/proteins.csv ::: $prot_ext
 
 if [[ $ALGO == "VINA" ]]
 then
-    parallel -j 0 vina_check_cpu "{1}" "$protein_dir" :::: $working_dir/proteins.csv
+    parallel -j $number_jobs vina_check_cpu "{1}" "$protein_dir" :::: $working_dir/proteins.csv
 fi
 
 echo "Virtual Screening Preparation: Allocating input files"
 # read csv, the allocate files *working_dir/*protein/*ligand/*files*
-cat ${temp_file} | parallel -j 0 mkdir -p $working_dir/docking/{1}/{2} :::: $working_dir/proteins.csv :::: $working_dir/ligands.csv
-cat ${temp_file} | parallel -j 0 cp -a $protein_dir/{1}{3} $working_dir/docking/{1}/{2} :::: $working_dir/proteins.csv :::: $working_dir/ligands.csv ::: $prot_ext
-cat ${temp_file} | parallel -j 0 cp -a $ligand_dir/{2}.pdbqt $working_dir/docking/{1}/{2} :::: $working_dir/proteins.csv :::: $working_dir/ligands.csv
+cat ${temp_file} | parallel -j $number_jobs mkdir -p $working_dir/docking/{1}/{2} :::: $working_dir/proteins.csv :::: $working_dir/ligands.csv
+cat ${temp_file} | parallel -j $number_jobs cp -a $protein_dir/{1}{3} $working_dir/docking/{1}/{2} :::: $working_dir/proteins.csv :::: $working_dir/ligands.csv ::: $prot_ext
+cat ${temp_file} | parallel -j $number_jobs cp -a $ligand_dir/{2}.pdbqt $working_dir/docking/{1}/{2} :::: $working_dir/proteins.csv :::: $working_dir/ligands.csv
 
 if [[ $ALGO == "AD" ]]
 then
@@ -362,7 +362,7 @@ vs_genenergymatrix "$working_dir" "$result_dir" "$ALGO"
 if [[ $ALGO == "AD" ]]
 then
     export -f gen_best_structure
-    cat ${temp_file} | parallel -j 0 gen_best_structure "{1}" "{2}" "$working_dir" "$result_dir" :::: $working_dir/proteins.csv :::: $working_dir/ligands.csv
+    cat ${temp_file} | parallel -j $number_jobs gen_best_structure "{1}" "{2}" "$working_dir" "$result_dir" :::: $working_dir/proteins.csv :::: $working_dir/ligands.csv
 fi
 
 bash $SCRIPTPATH/Modules/vs_printCLI.sh -c 10
