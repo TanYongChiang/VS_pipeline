@@ -368,7 +368,14 @@ function prepare_ligand4_py ()
 # 1- MGL_dir
 # 2- ligand full location + suffix
     local lig_loc_nosuffix=$(echo "$2" | cut -f 1 -d '.')
-    $1/bin/pythonsh $1/MGLToolsPckgs/AutoDockTools/Utilities24/prepare_ligand4.py -l $2 -o $lig_loc_nosuffix.pdbqt > /dev/null 2>&1
+    local lig_loc=$(dirname $2)
+    $1/bin/pythonsh $1/MGLToolsPckgs/AutoDockTools/Utilities24/prepare_ligand4.py -l $2 -o $lig_loc_nosuffix.pdbqt > $lig_loc_nosuffix.vslog 2>&1 || true
+    if [[ -n "$(cat $lig_loc_nosuffix.vslog | awk '/^(WARNING|Sorry)/{print}')" ]]
+    then
+        mkdir -p $lig_loc/PDBQT_ERROR
+        mv -f $lig_loc_nosuffix.pdbqt $lig_loc/PDBQT_ERROR/
+    fi
+    rm -f $lig_loc_nosuffix.vslog
 }
 
 function print_err_color ()
@@ -531,7 +538,7 @@ fi
 # endregion GET important directories
 
 print_ask_head "Enter number of jobs to be run in parallel: "
-print_ask_body "(number of cores: $(nproc))"
+print_ask_body "(number of cores: $(nproc))\n"
 while true
 do
     read number_jobs
@@ -548,7 +555,7 @@ done
 # region RECEPTOR 
 
 cd $protein_dir
-printf "Receptor: checking receptor directory\n"
+printf "\nReceptor: checking receptor directory\n"
 
     # region protein pdbqt absent
 if [ $(extension_present "pdbqt" "$protein_dir") == false ]
