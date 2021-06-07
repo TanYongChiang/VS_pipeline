@@ -158,17 +158,17 @@ function vs_genenergymatrix ()
     printf "Binding Energies" > $2/vs_energymatrix.csv
     
     # x axis
-    while read receptor_byline
+    while read receptor_byline || [ -n "$line" ]
     do
         printf "," >> $2/vs_energymatrix.csv
         printf "$receptor_byline" >> $2/vs_energymatrix.csv
     done < $1/proteins.csv
     printf "\n" >> $2/vs_energymatrix.csv
 
-    while read ligand_byline
+    while read ligand_byline || [ -n "$line" ]
     do
         printf "$ligand_byline" >> $2/vs_energymatrix.csv
-        while read receptor_byline
+        while read receptor_byline || [ -n "$line" ]
         do
             printf "," >> $2/vs_energymatrix.csv
             cd $1/docking/$receptor_byline/$ligand_byline/
@@ -228,7 +228,7 @@ function gen_best_structure ()
     mkdir -p $4/best_structures/$1/$2/
     cat $3/docking/$1/$2/$1.pdbqt | awk '/^(ATOM|TER)/ {print}' > $4/best_structures/$1/$2/DOCKED_COMPLEX.pdb
     trigger=0
-    while read line
+    while read line || [ -n "$line" ]
     do
         if [[ "$line" =~ ^MODEL ]]
         then

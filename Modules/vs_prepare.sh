@@ -162,7 +162,7 @@ function pdbqt_xyz ()
 # 3- ALGO
 # 4- expand xyz in Angstrom (gpf_length)
 # 5- num_runs
-    while read line
+    while read line || [ -n "$line" ]
     do
         prot_name="$(printf -- "$line" | awk -F "," '{print $1}')"
         chn_res_s="$(printf -- "$line" | awk -F "," '{print $2}')"
