@@ -232,7 +232,7 @@ function pdbqt_xyz ()
             dim_min["$dim"]="$(printf -- "$coords" | awk 'NR==1 {min=$1};{if ($1<min) min=$1};END {printf "%f\n", min}')"
             dim_max["$dim"]="$(printf -- "$coords" | awk 'NR==1 {max=$1};{if ($1>max) max=$1};END {printf "%f\n", max}')"
             dim_midpt["$dim"]="$(printf -- "${dim_min["$dim"]} ${dim_max["$dim"]}" | awk '{print ($1+$2)/2}')"
-            dim_npts["$dim"]="$(printf -- "${dim_max["$dim"]} ${dim_midpt["$dim"]} $4" | awk '{print (($1-$2)*2)+$3}')"
+            dim_npts["$dim"]="$(printf -- "${dim_max["$dim"]} ${dim_min["$dim"]} $4" | awk '{print ($1-$2)+$3}')"
         done
 
         if [[ $3 == "AD" ]]
@@ -369,13 +369,13 @@ function prepare_ligand4_py ()
 # 2- ligand full location + suffix
     local lig_loc_nosuffix=$(echo "$2" | cut -f 1 -d '.')
     local lig_loc=$(dirname $2)
-    $1/bin/pythonsh $1/MGLToolsPckgs/AutoDockTools/Utilities24/prepare_ligand4.py -l $2 -o $lig_loc_nosuffix.pdbqt > $lig_loc_nosuffix.vslog 2>&1 || true
-    if [[ -n "$(cat $lig_loc_nosuffix.vslog | awk '/^(WARNING|Sorry)/{print}')" ]]
-    then
-        mkdir -p $lig_loc/PDBQT_ERROR
-        mv -f $lig_loc_nosuffix.pdbqt $lig_loc/PDBQT_ERROR/
-    fi
-    rm -f $lig_loc_nosuffix.vslog
+    $1/bin/pythonsh $1/MGLToolsPckgs/AutoDockTools/Utilities24/prepare_ligand4.py -l $2 -o $lig_loc_nosuffix.pdbqt #> $lig_loc_nosuffix.vslog 2>&1 || true
+    # if [[ -n "$(cat $lig_loc_nosuffix.vslog | awk '/^(WARNING|Sorry)/{print}')" ]]
+    # then
+    #     mkdir -p $lig_loc/PDBQT_ERROR
+    #     mv -f $lig_loc_nosuffix.pdbqt $lig_loc/PDBQT_ERROR/
+    # fi
+    # rm -f $lig_loc_nosuffix.vslog
 }
 
 function print_err_color ()
@@ -552,6 +552,8 @@ do
     print_err_color "Please enter an integer: "
 done
 
+number_jobs_quarter=$(awk 'BEGIN {printf "%.0f ", '"${number_jobs}"/4'}')
+if [ "$number_jobs_quarter" -eq 0 ]; then number_jobs_quarter=1; fi
 # region RECEPTOR 
 
 cd $protein_dir
@@ -1015,12 +1017,37 @@ fi
 # region run
 
     # region export for CLI
-export prepare_receptor
-export AD_ALGO
-export AUTO_SITE
-export -f extension_present
-export ligand_dir
-export ALGO
+# export prepare_receptor
+# export AD_ALGO
+# export AUTO_SITE
+# export -f extension_present
+# export ligand_dir
+# export ALGO
+unset CLI_gate
+if [[ $prepare_receptor == "y" || $prepare_receptor == "Y" ]]
+then
+    export CLI_gate="${CLI_gate}1 "
+fi
+if [[ $AD_ALGO =~ ^[1-3]$ ]]
+then
+    export CLI_gate="${CLI_gate}2 "
+fi
+if [[ $AUTO_SITE -eq 2 ]]
+then
+    export CLI_gate="${CLI_gate}3 "
+fi
+if [[ $AUTO_SITE -eq 3 ]]
+then
+    export CLI_gate="${CLI_gate}4 "
+fi
+if [ $(extension_present "pdbqt" "$ligand_dir") == false ]
+then
+    export CLI_gate="${CLI_gate}5 "
+fi
+if [[ $ALGO == "AD" ]]
+then
+    export CLI_gate="${CLI_gate}6 "
+fi
     # endregion export for CLI
     # region prepare pdbqt 
 
@@ -1118,7 +1145,7 @@ then
         printf "\nLigand preparation: 3D structures generation\n"
         if [[ $(ls $ligand_dir/LIGAND_SMI/*.smi | wc -l) -ge 1 ]]
         then
-            parallel -j $number_jobs --eta obabel_gen3d "$bab_gen3d_speed" "{1}" ::: $(ls $ligand_dir/LIGAND_SMI/*.smi)
+            parallel -j $number_jobs_quarter --eta obabel_gen3d "$bab_gen3d_speed" "{1}" ::: $(ls $ligand_dir/LIGAND_SMI/*.smi)
         fi
         mkdir -p $ligand_dir/LIGAND_PDB
         mv $ligand_dir/LIGAND_SMI/*.pdb $ligand_dir/LIGAND_PDB
@@ -1126,14 +1153,14 @@ then
     then
         bash $SCRIPTPATH/Modules/vs_printCLI.sh -c 5
         printf "\nLigand preparation: 3D structures generation\n"
-        parallel -j $number_jobs --eta obabel_gen3d "$bab_gen3d_speed" "{1}" ::: $(ls $ligand_dir/LIGAND_SDF/*.sdf)
+        parallel -j $number_jobs_quarter --eta obabel_gen3d "$bab_gen3d_speed" "{1}" ::: $(ls $ligand_dir/LIGAND_SDF/*.sdf)
         mkdir -p $ligand_dir/LIGAND_PDB
         mv $ligand_dir/LIGAND_SDF/*.pdb $ligand_dir/LIGAND_PDB
     elif [ -e "$ligand_dir/LIGAND_MOL2" ]
     then
         bash $SCRIPTPATH/Modules/vs_printCLI.sh -c 5
         printf "\nLigand preparation: conversion from mol2 into pdb\n"
-        parallel -j $number_jobs --eta obabel_mol2_pdb "{1}" ::: $(ls $ligand_dir/LIGAND_MOL2/*.mol2)
+        parallel -j $number_jobs_quarter --eta obabel_mol2_pdb "{1}" ::: $(ls $ligand_dir/LIGAND_MOL2/*.mol2)
         mkdir -p $ligand_dir/LIGAND_PDB
         mv $ligand_dir/LIGAND_MOL2/*.pdb $ligand_dir/LIGAND_PDB
     fi
@@ -1149,21 +1176,21 @@ then
         then
             printf "explicitly \n"
         fi
-        parallel -j $number_jobs --eta obabel_addh "$bab_addh" "{1}" ::: $(ls $ligand_dir/LIGAND_PDB/*.pdb)
+        parallel -j $number_jobs_quarter --eta obabel_addh "$bab_addh" "{1}" ::: $(ls $ligand_dir/LIGAND_PDB/*.pdb)
     fi
 
     if [[ $bab_conformer_ff =~ ^[1-5]$ ]]
     then
         bash $SCRIPTPATH/Modules/vs_printCLI.sh -c 5
         printf "\nLigand preparation: conformer generation \n"
-        parallel -j $number_jobs --eta obabel_conformer "$bab_conformer_ff" ::: "$bab_conformer_score" ::: "$bab_conformer_no" ::: $(ls $ligand_dir/LIGAND_PDB/*.pdb)
+        parallel -j $number_jobs_quarter --eta obabel_conformer "$bab_conformer_ff" ::: "$bab_conformer_score" ::: "$bab_conformer_no" ::: $(ls $ligand_dir/LIGAND_PDB/*.pdb)
     fi
 
     if [[ $bab_minim_sd_nsteps -gt 0 ]] || [[ $bab_minim_cg_nsteps -gt 0 ]]
     then
         bash $SCRIPTPATH/Modules/vs_printCLI.sh -c 5
         printf "\nLigand preparation: energy minimization \n"
-        parallel -j $number_jobs --eta obabel_minimization "$bab_minim_sd_nsteps" ::: "$bab_minim_sd_conv" ::: "$bab_minim_cg_nsteps" ::: "$bab_minim_cg_conv" ::: "$bab_minim_ff" ::: $(ls $ligand_dir/LIGAND_PDB/*.pdb)
+        parallel -j $number_jobs_quarter --eta obabel_minimization "$bab_minim_sd_nsteps" ::: "$bab_minim_sd_conv" ::: "$bab_minim_cg_nsteps" ::: "$bab_minim_cg_conv" ::: "$bab_minim_ff" ::: $(ls $ligand_dir/LIGAND_PDB/*.pdb)
     fi
 
     if [ -e "$ligand_dir/LIGAND_PDB" ]

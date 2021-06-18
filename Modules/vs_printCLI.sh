@@ -52,39 +52,57 @@ printf "\t|     | \e[1m\e[96mJOBS\e[0m                               | \e[1m\e[9
 printf "\t|     +------------------------------------+-------------|     |\n"
 printf "\t|     | \e[1mPREPARATION\e[0m                        |             |     |\n"
 
-if [[ $prepare_receptor == "y" || $prepare_receptor == "Y" ]]
-then
-    CLI_print_line "1" "$current_CLI"
-fi
+for i in ${CLI_gate}
+do
+    if [ "$i" -eq 1 ]
+    then
+        CLI_print_line "1" "$current_CLI"
+    fi
+done
 
-if [[ $AD_ALGO =~ ^[1-3]$ ]]
-then
-    CLI_print_line "2" "$current_CLI"
-fi
+for i in ${CLI_gate}
+do
+    if [ "$i" -eq 2 ]
+    then
+        CLI_print_line "2" "$current_CLI"
+    fi
+done
 
-if [[ $AUTO_SITE -eq 2 ]]
-then
-    CLI_print_line "3" "$current_CLI"
-fi
+for i in ${CLI_gate}
+do
+    if [ "$i" -eq 3 ]
+    then
+        CLI_print_line "3" "$current_CLI"
+    fi
+done
 
-if [[ $AUTO_SITE -eq 3 ]]
-then
-    CLI_print_line "4" "$current_CLI"
-fi
+for i in ${CLI_gate}
+do
+    if [ "$i" -eq 4 ]
+    then
+        CLI_print_line "4" "$current_CLI"
+    fi
+done
 
-if [ $(extension_present "pdbqt" "$ligand_dir") == false ]
-then
-    CLI_print_line "5" "$current_CLI"
-fi
+for i in ${CLI_gate}
+do
+    if [ "$i" -eq 5 ]
+    then
+        CLI_print_line "5" "$current_CLI"
+    fi
+done
 
 printf "\t|     |                                    |             |     |\n"
 printf "\t|     | \e[1mVIRTUAL SCREENING\e[0m                  |             |     |\n"
 CLI_print_line "6" "$current_CLI"
 
-if [[ $ALGO == "AD" ]]
-then
-    CLI_print_line "7" "$current_CLI"
-fi
+for i in ${CLI_gate}
+do
+    if [ "$i" -eq 6 ]
+    then
+        CLI_print_line "7" "$current_CLI"
+    fi
+done
 
 CLI_print_line "8" "$current_CLI"
 
