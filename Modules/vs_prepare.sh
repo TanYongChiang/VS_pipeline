@@ -369,13 +369,13 @@ function prepare_ligand4_py ()
 # 2- ligand full location + suffix
     local lig_loc_nosuffix=$(echo "$2" | cut -f 1 -d '.')
     local lig_loc=$(dirname $2)
-    $1/bin/pythonsh $1/MGLToolsPckgs/AutoDockTools/Utilities24/prepare_ligand4.py -l $2 -o $lig_loc_nosuffix.pdbqt #> $lig_loc_nosuffix.vslog 2>&1 || true
-    # if [[ -n "$(cat $lig_loc_nosuffix.vslog | awk '/^(WARNING|Sorry)/{print}')" ]]
-    # then
-    #     mkdir -p $lig_loc/PDBQT_ERROR
-    #     mv -f $lig_loc_nosuffix.pdbqt $lig_loc/PDBQT_ERROR/
-    # fi
-    # rm -f $lig_loc_nosuffix.vslog
+    $1/bin/pythonsh $1/MGLToolsPckgs/AutoDockTools/Utilities24/prepare_ligand4.py -l $2 -o $lig_loc_nosuffix.pdbqt > $lig_loc_nosuffix.vslog 2>&1 || true
+    if [[ -n "$(cat $lig_loc_nosuffix.vslog | awk '/^(WARNING|Sorry)/{print}')" ]]
+    then
+        mkdir -p $lig_loc/PDBQT_ERROR
+        mv -f $lig_loc_nosuffix.pdbqt $lig_loc/PDBQT_ERROR/
+    fi
+    rm -f $lig_loc_nosuffix.vslog
 }
 
 function print_err_color ()
